@@ -279,11 +279,6 @@
                         "name": "Vnet1",
                         "vxlan_tunnel": "vtep1",
                         "vni": "10001"
-                    },
-                    {
-                        "name": "Vnet1",
-                        "vxlan_tunnel": "vtep1",
-                        "vni": "10002"
                     }
                 ]
             },
