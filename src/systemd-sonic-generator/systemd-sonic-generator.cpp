@@ -984,6 +984,26 @@ static int render_network_service_for_smart_switch(const std::filesystem::path& 
 }
 
 
+static int mask_networkd_for_non_smart_switch(const std::filesystem::path& install_dir) {
+    if (smart_switch) {
+        return 0;
+    }
+
+    auto service_path = install_dir / "systemd-networkd.service";
+
+    int r = symlink("/dev/null", service_path.c_str());
+
+    if (r < 0) {
+        if (errno == EEXIST)
+            return 0;
+        log_to_kmsg("Error masking %s: %s\n", service_path.c_str(), strerror(errno));
+        return -1;
+    }
+
+    return 0;
+}
+
+
 int ssg_main(int argc, char **argv) {
     char* unit_files[MAX_NUM_UNITS];
     std::string install_dir;
@@ -1021,6 +1041,11 @@ int ssg_main(int argc, char **argv) {
         }
     }
 
+    // Mask systemd-networkd on non-smart-switch platforms
+    if (mask_networkd_for_non_smart_switch(install_dir) != 0) {
+        return -1;
+    }
+
     // For each unit file, get the installation targets and install the unit
     for (int i = 0; i < num_unit_files; i++) {
         unit_instance = unit_files[i];
@@ -1035,8 +1060,7 @@ int ssg_main(int argc, char **argv) {
 
         auto instance_name = unit_instance.substr(0, unit_instance.find('.'));
 
-        if(((num_asics > 1) && (!is_multi_instance_service(instance_name)))
-            || ((num_dpus > 0) && (!is_multi_instance_service_for_dpu(instance_name)))) {
+        if ((num_asics > 1) && !is_multi_instance_service(instance_name)) {
             replace_multi_inst_dep(install_dir, unit_instance);
         }
 
